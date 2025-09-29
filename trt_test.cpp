@@ -83,7 +83,7 @@ int main(int argc, char** argv) {
     }
     else {
         // 기본 경로
-        enginePath = "./model/yolov5s_int8.engine";
+        enginePath = "./model/yolov5s_fp16.engine";
         imagePath = "./images/test.jpg";
     }
 
@@ -124,21 +124,21 @@ int main(int argc, char** argv) {
     resized.convertTo(resized, CV_32F, 1 / 255.0);
 
     // fp32, INT8
-    std::vector<float> inputHost(3 * INPUT_H * INPUT_W);
-    int idx = 0;
-    for (int c = 0; c < 3; c++) for (int y = 0; y < INPUT_H; y++) for (int x = 0; x < INPUT_W; x++)
-        inputHost[idx++] = resized.at<cv::Vec3f>(y, x)[c];
+    //std::vector<float> inputHost(3 * INPUT_H * INPUT_W);
+    //int idx = 0;
+    //for (int c = 0; c < 3; c++) for (int y = 0; y < INPUT_H; y++) for (int x = 0; x < INPUT_W; x++)
+    //    inputHost[idx++] = resized.at<cv::Vec3f>(y, x)[c];
     
     // fp16
-    //std::vector<uint16_t> inputHost(3 * INPUT_H * INPUT_W);
-    //int idx = 0;
-    //for (int c = 0; c < 3; c++)
-    //    for (int y = 0; y < INPUT_H; y++)
-    //        for (int x = 0; x < INPUT_W; x++) {
-    //            float v = resized.at<cv::Vec3f>(y, x)[c]; // CV_32F로 읽음
-    //            HalfBits hb; hb.h = __float2half(v);
-    //            inputHost[idx++] = hb.u;
-    //        }
+    std::vector<uint16_t> inputHost(3 * INPUT_H * INPUT_W);
+    int idx = 0;
+    for (int c = 0; c < 3; c++)
+        for (int y = 0; y < INPUT_H; y++)
+            for (int x = 0; x < INPUT_W; x++) {
+                float v = resized.at<cv::Vec3f>(y, x)[c]; // CV_32F로 읽음
+                HalfBits hb; hb.h = __float2half(v);
+                inputHost[idx++] = hb.u;
+            }
 
 
     Dims4 inShape{ 1,3,INPUT_H,INPUT_W };
@@ -160,10 +160,10 @@ int main(int argc, char** argv) {
     void* dInput = nullptr; void* dOutput = nullptr;
 
     //fp32, INT8
-    CHECK_CUDA(cudaMalloc(&dInput, inputHost.size() * sizeof(float)));
+    //CHECK_CUDA(cudaMalloc(&dInput, inputHost.size() * sizeof(float)));
 
     //fp16
-    //CHECK_CUDA(cudaMalloc(&dInput, inputHost.size() * sizeof(uint16_t)));
+    CHECK_CUDA(cudaMalloc(&dInput, inputHost.size() * sizeof(uint16_t)));
 
     CHECK_CUDA(cudaMalloc(&dOutput, outputBytes));
     cudaStream_t stream; CHECK_CUDA(cudaStreamCreate(&stream));
@@ -173,14 +173,14 @@ int main(int argc, char** argv) {
 
     // H2D
     // fp32, INT8
-    CHECK_CUDA(cudaMemcpyAsync(dInput, inputHost.data(),
-        inputHost.size() * sizeof(float),
-        cudaMemcpyHostToDevice, stream));
+    //CHECK_CUDA(cudaMemcpyAsync(dInput, inputHost.data(),
+    //    inputHost.size() * sizeof(float),
+    //    cudaMemcpyHostToDevice, stream));
     
     // fp16
-    //CHECK_CUDA(cudaMemcpyAsync(dInput, inputHost.data(),
-    //    inputHost.size() * sizeof(uint16_t),
-    //    cudaMemcpyHostToDevice, stream));
+    CHECK_CUDA(cudaMemcpyAsync(dInput, inputHost.data(),
+        inputHost.size() * sizeof(uint16_t),
+        cudaMemcpyHostToDevice, stream));
 
     // 실행
     if (!context->enqueueV3(stream)) {
@@ -240,7 +240,7 @@ int main(int argc, char** argv) {
 
     // ---------------- 시각화 ----------------
     for (const auto& d : finalDet) {
-        cv::rectangle(img, d.box, { 255,255,0 }, 2);
+        cv::rectangle(img, d.box, { 0,255,0 }, 2);
         std::string text = std::to_string(d.class_id) + " " + cv::format("%.2f", d.conf);
         cv::putText(img, text, d.box.tl(), cv::FONT_HERSHEY_SIMPLEX, 0.7, { 0,0,255 }, 2);
     }
