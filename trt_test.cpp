@@ -83,8 +83,8 @@ int main(int argc, char** argv) {
     }
     else {
         // 기본 경로
-        enginePath = "C:/Users/jhkim/Desktop/project/YOLOv5/trt_inference/trt_inference/model/yolov5s_int8.engine";
-        imagePath = "C:/Users/jhkim/Desktop/project/YOLOv5/trt_inference/trt_inference/images/test.png";
+        enginePath = "./model/yolov5s_int8.engine";
+        imagePath = "./images/test.jpg";
     }
 
     std::filesystem::path p(enginePath);
